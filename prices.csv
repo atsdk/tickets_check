@@ -13,3 +13,10 @@ ts,leg,source,airline,from,to,date,dep_time,price_pp_gbp
 2026-08-24 12:28,return,ryanair-api,Ryanair,VLC,STN,2027-01-06,12:30,52.99
 2026-08-24 12:28,return,ryanair-api,Ryanair,VLC,STN,2027-01-04,10:20,110.99
 2026-08-24 12:28,return,ryanair-api,Ryanair,VLC,STN,2027-01-05,13:10,110.99
+2026-08-24 13:30,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-26,19:35,87.14
+2026-08-24 13:30,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-24,13:15,100.99
+2026-08-24 13:30,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-23,14:25,132.69
+2026-08-24 13:30,return,ryanair-api,Ryanair,VLC,STN,2027-01-07,10:55,45.99
+2026-08-24 13:30,return,ryanair-api,Ryanair,VLC,STN,2027-01-06,12:30,52.99
+2026-08-24 13:30,return,ryanair-api,Ryanair,VLC,STN,2027-01-04,10:20,110.99
+2026-08-24 13:30,return,ryanair-api,Ryanair,VLC,STN,2027-01-05,13:10,110.99
