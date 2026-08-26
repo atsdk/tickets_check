@@ -33,9 +33,9 @@ import requests
 PAX = 2
 
 # Outbound: London -> Valencia, arrive 23-26 Dec 2026 (short flight => same-day)
-OUTBOUND_DATES = ["2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26"]
+OUTBOUND_DATES = ["2026-12-19", "2026-12-20", "2026-12-21", "2026-12-22", "2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27", "2026-12-28"]
 # Return: Valencia -> London, 4-7 Jan 2027
-RETURN_DATES = ["2027-01-04", "2027-01-05", "2027-01-06", "2027-01-07"]
+RETURN_DATES = ["2027-01-02", "2027-01-03", "2027-01-04", "2027-01-05", "2027-01-06", "2027-01-07"]
 
 # Earliest acceptable departure time (local), per departure airport.
 # Default applies to anything not listed (incl. VLC on the way back).
