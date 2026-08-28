@@ -2,7 +2,7 @@ name: fare-monitor
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # ~every 30 min (GitHub cron is best-effort)
+    - cron: "13,43 * * * *"  # off-peak minutes — top-of-hour crons get throttled hardest
   workflow_dispatch:          # manual "Run workflow" button for testing
 
 permissions:

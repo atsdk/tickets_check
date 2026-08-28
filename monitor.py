@@ -4,7 +4,7 @@ London <-> Valencia fare monitor.
 
 Sources:
   1. Ryanair unofficial fare-finder API (services-api.ryanair.com) - STN route.
-  2. Google Flights via the `fast-flights` library - easyJet / Vueling / Wizz / BA
+  2. Google Flights via `fast-flights` v3 - easyJet / Vueling / Wizz / BA
      from LGW, LTN, LHR, STN.
 
 Alerts via Telegram (and optionally email) when a qualifying round-trip combo
@@ -21,10 +21,18 @@ import re
 import smtplib
 import sys
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from email.mime.text import MIMEText
 
 import requests
+
+try:
+    from fast_flights import FlightQuery, Passengers, create_query, get_flights
+    FAST_FLIGHTS_OK = True
+except Exception as _e:  # noqa: N816
+    print(f"[warn] fast-flights unavailable ({type(_e).__name__}: {_e}); "
+          "Google source disabled")
+    FAST_FLIGHTS_OK = False
 
 # ----------------------------------------------------------------------------
 # CONFIG - edit here
@@ -32,9 +40,9 @@ import requests
 
 PAX = 2
 
-# Outbound: London -> Valencia, arrive 23-26 Dec 2026 (short flight => same-day)
+# Outbound: London -> Valencia
 OUTBOUND_DATES = ["2026-12-19", "2026-12-20", "2026-12-21", "2026-12-22", "2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27", "2026-12-28"]
-# Return: Valencia -> London, 4-7 Jan 2027
+# Return: Valencia -> London
 RETURN_DATES = ["2027-01-02", "2027-01-03", "2027-01-04", "2027-01-05", "2027-01-06", "2027-01-07"]
 
 # Earliest acceptable departure time (local), per departure airport.
@@ -49,9 +57,11 @@ DIRECT_ONLY = True
 # Alert thresholds
 TOTAL_TARGET_GBP = 150.0   # alert if best round-trip total for PAX people <= this
 DROP_ALERT_GBP = 5.0       # also alert if best total drops by at least this much
-DAILY_SUMMARY_HOUR_UTC = 18  # one summary/day after this hour even without a drop
+# GitHub throttles cron heavily, so runs can be hours apart: send the daily
+# summary on the FIRST run after this UTC hour (if none sent yet today).
+DAILY_SUMMARY_AFTER_UTC = 7
 
-# Rough conversion if Google returns non-GBP prices (US runner IPs sometimes do)
+# Rough conversion if Google returns non-GBP prices despite currency=GBP
 FX_TO_GBP = {"£": 1.0, "€": 0.85, "$": 0.76, "GBP": 1.0, "EUR": 0.85, "USD": 0.76}
 
 STATE_FILE = "state.json"
@@ -60,6 +70,10 @@ CSV_FILE = "prices.csv"
 # ----------------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------------
+
+def utcnow():
+    return datetime.now(timezone.utc)
+
 
 def earliest_for(airport: str) -> str:
     return EARLIEST_DEP.get(airport, EARLIEST_DEP["DEFAULT"])
@@ -71,33 +85,6 @@ def time_ok(airport: str, hhmm: str) -> bool:
 
 def to_gbp(amount: float, currency: str) -> float:
     return round(amount * FX_TO_GBP.get(currency, 1.0), 2)
-
-
-def parse_price(text: str):
-    """'£38' / '€45' / '$52' / 'GBP 38.99' -> (38.0, '£')"""
-    if not text:
-        return None, None
-    m = re.search(r"([£€$])?\s*([\d,]+(?:\.\d+)?)", str(text))
-    if not m:
-        return None, None
-    cur = m.group(1) or ("£" if "GBP" in str(text) else "€" if "EUR" in str(text) else "$" if "USD" in str(text) else "£")
-    return float(m.group(2).replace(",", "")), cur
-
-
-def parse_ampm_time(text: str):
-    """'6:20 AM on Wed, Dec 23' -> '06:20' (24h). Returns None if unparseable."""
-    m = re.search(r"(\d{1,2}):(\d{2})\s*(AM|PM)", str(text), re.IGNORECASE)
-    if not m:
-        m24 = re.search(r"\b(\d{1,2}):(\d{2})\b", str(text))
-        if m24:
-            return f"{int(m24.group(1)):02d}:{m24.group(2)}"
-        return None
-    h, mnt, ap = int(m.group(1)), m.group(2), m.group(3).upper()
-    if ap == "PM" and h != 12:
-        h += 12
-    if ap == "AM" and h == 12:
-        h = 0
-    return f"{h:02d}:{mnt}"
 
 
 # ----------------------------------------------------------------------------
@@ -135,7 +122,6 @@ def ryanair_fares(origin, dest, date_from, date_to, earliest):
                 "source": "ryanair-api", "airline": "Ryanair",
                 "from": origin, "to": dest, "date": d, "dep_time": hhmm,
                 "price_pp_gbp": to_gbp(value, cur),
-                "raw_price": f"{value} {cur}",
             })
     except Exception as e:
         print(f"[warn] Ryanair {origin}->{dest} failed: {e}")
@@ -143,42 +129,44 @@ def ryanair_fares(origin, dest, date_from, date_to, earliest):
 
 
 # ----------------------------------------------------------------------------
-# Source 2: Google Flights via fast-flights
+# Source 2: Google Flights via fast-flights v3
 # ----------------------------------------------------------------------------
 
 def google_fares(origin, dest, day):
-    try:
-        from fast_flights import FlightData, Passengers, get_flights
-    except ImportError:
-        print("[warn] fast-flights not installed; skipping Google source")
+    if not FAST_FLIGHTS_OK:
         return []
     out = []
     try:
-        result = get_flights(
-            flight_data=[FlightData(date=day, from_airport=origin, to_airport=dest)],
-            trip="one-way", seat="economy",
-            passengers=Passengers(adults=PAX, children=0,
-                                  infants_in_seat=0, infants_on_lap=0),
-            fetch_mode="fallback",
+        q = create_query(
+            flights=[FlightQuery(
+                date=day, from_airport=origin, to_airport=dest,
+                max_stops=0 if DIRECT_ONLY else None,
+                earliest_departure_hour=int(earliest_for(origin).split(":")[0]),
+            )],
+            trip="one-way",
+            passengers=Passengers(adults=PAX),
+            currency="GBP",
         )
-        for f in result.flights:
-            stops = getattr(f, "stops", 0)
-            if DIRECT_ONLY and stops not in (0, "0", "Nonstop", None):
+        for fl in get_flights(q):
+            try:
+                seg = fl.flights[0]
+                h, m = seg.departure.time
+                hhmm = f"{h:02d}:{m:02d}"
+                if not time_ok(origin, hhmm):
+                    continue
+                price = float(fl.price)  # int, in GBP (currency=GBP)
+                if price <= 0:
+                    continue
+                out.append({
+                    "source": "google", "airline": ", ".join(fl.airlines) or "?",
+                    "from": origin, "to": dest, "date": day, "dep_time": hhmm,
+                    "price_pp_gbp": round(price, 2),  # Google shows per-person
+                })
+            except Exception:
                 continue
-            hhmm = parse_ampm_time(getattr(f, "departure", ""))
-            if hhmm is None or not time_ok(origin, hhmm):
-                continue
-            value, cur = parse_price(getattr(f, "price", ""))
-            if value is None:
-                continue
-            out.append({
-                "source": "google", "airline": getattr(f, "name", "?"),
-                "from": origin, "to": dest, "date": day, "dep_time": hhmm,
-                "price_pp_gbp": to_gbp(value, cur),  # Google shows per-person
-                "raw_price": str(getattr(f, "price", "")),
-            })
     except Exception as e:
-        print(f"[warn] Google {origin}->{dest} {day} failed: {e}")
+        print(f"[warn] Google {origin}->{dest} {day} failed: "
+              f"{type(e).__name__}: {e}")
     return out
 
 
@@ -257,10 +245,10 @@ def build_message(outbound, inbound, total, reason):
     lines = [f"✈️ LON↔VLC monitor — {reason}"]
     if total is not None:
         lines.append(f"Best qualifying round trip for {PAX}: £{total:.2f}")
-    lines.append("\nBest outbound (arrive 23–26 Dec):")
-    lines += ["  " + fmt(f) for f in outbound[:4]] or ["  none found ≥ time limits"]
-    lines.append("\nBest return (4–7 Jan):")
-    lines += ["  " + fmt(f) for f in inbound[:4]] or ["  none found ≥ time limits"]
+    lines.append(f"\nBest outbound ({OUTBOUND_DATES[0]} … {OUTBOUND_DATES[-1]}):")
+    lines += ["  " + fmt(f) for f in outbound[:5]] or ["  none found within time limits"]
+    lines.append(f"\nBest return ({RETURN_DATES[0]} … {RETURN_DATES[-1]}):")
+    lines += ["  " + fmt(f) for f in inbound[:5]] or ["  none found within time limits"]
     lines.append("\nPrices are per-person 'from' fares, under-seat bag only — "
                  "verify at checkout.")
     return "\n".join(lines)
@@ -298,7 +286,7 @@ def send_email(subject, text):
 
 
 def main():
-    ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+    ts = utcnow().strftime("%Y-%m-%d %H:%M")
     outbound, inbound = collect()
     log_csv(ts, outbound, "outbound")
     log_csv(ts, inbound, "return")
@@ -309,8 +297,8 @@ def main():
 
     state = load_state()
     prev = state.get("best_total")
-    today = date.today().isoformat()
-    hour = datetime.utcnow().hour
+    today = utcnow().date().isoformat()
+    hour = utcnow().hour
 
     reason = None
     if total is not None and total <= TOTAL_TARGET_GBP:
@@ -319,7 +307,7 @@ def main():
         reason = f"⬇️ price drop (was £{prev:.2f})"
     elif prev is None:
         reason = "first run — monitoring is live"
-    elif state.get("last_summary") != today and hour >= DAILY_SUMMARY_HOUR_UTC:
+    elif state.get("last_summary") != today and hour >= DAILY_SUMMARY_AFTER_UTC:
         reason = "daily summary"
 
     print(build_message(outbound, inbound, total, reason or "no alert"))

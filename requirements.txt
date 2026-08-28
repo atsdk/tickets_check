@@ -1,2 +1,2 @@
 requests>=2.31
-fast-flights>=2.0
+fast-flights>=3.0
