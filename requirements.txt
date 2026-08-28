@@ -1,2 +1,3 @@
 requests>=2.31
+typing_extensions>=4.0
 fast-flights>=3.0
