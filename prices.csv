@@ -13880,3 +13880,67 @@ ts,leg,source,airline,from,to,date,dep_time,price_pp_gbp
 2026-10-01 01:18,return,google,easyJet,VLC,LGW,2027-01-03,12:20,319.0
 2026-10-01 01:18,return,google,British Airways,VLC,LHR,2027-01-04,21:10,335.0
 2026-10-01 01:18,return,google,British Airways,VLC,LHR,2027-01-02,19:30,692.0
+2026-10-01 07:47,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-20,14:50,55.42
+2026-10-01 07:47,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-26,19:35,57.6
+2026-10-01 07:47,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-21,15:10,60.99
+2026-10-01 07:47,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-19,13:10,84.99
+2026-10-01 07:47,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-22,15:05,86.43
+2026-10-01 07:47,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-28,17:45,99.2
+2026-10-01 07:47,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-24,13:15,99.99
+2026-10-01 07:47,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-23,14:25,101.47
+2026-10-01 07:47,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-27,14:50,105.07
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-26,13:10,116.0
+2026-10-01 07:47,outbound,google,easyJet,LGW,VLC,2026-12-26,17:30,138.0
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-26,16:05,158.0
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-19,16:05,160.0
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-21,17:45,164.0
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-19,19:35,168.0
+2026-10-01 07:47,outbound,google,easyJet,LGW,VLC,2026-12-21,17:20,178.0
+2026-10-01 07:47,outbound,google,easyJet,LGW,VLC,2026-12-28,17:20,178.0
+2026-10-01 07:47,outbound,google,easyJet,LGW,VLC,2026-12-20,17:30,180.0
+2026-10-01 07:47,outbound,google,easyJet,LGW,VLC,2026-12-24,17:20,184.0
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-20,17:05,198.0
+2026-10-01 07:47,outbound,google,easyJet,LGW,VLC,2026-12-22,17:20,198.0
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-22,20:40,200.0
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-27,17:05,222.0
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-28,15:10,227.0
+2026-10-01 07:47,outbound,google,easyJet,LGW,VLC,2026-12-19,17:30,230.0
+2026-10-01 07:47,outbound,google,Ryanair,STN,VLC,2026-12-23,11:25,244.0
+2026-10-01 07:47,outbound,google,easyJet,LGW,VLC,2026-12-23,17:20,252.0
+2026-10-01 07:47,outbound,google,easyJet,LGW,VLC,2026-12-27,17:30,267.0
+2026-10-01 07:47,outbound,google,British Airways,LHR,VLC,2026-12-24,16:50,292.0
+2026-10-01 07:47,outbound,google,British Airways,LHR,VLC,2026-12-26,15:00,384.0
+2026-10-01 07:47,outbound,google,British Airways,LHR,VLC,2026-12-28,16:50,426.0
+2026-10-01 07:47,outbound,google,British Airways,LHR,VLC,2026-12-22,15:15,520.0
+2026-10-01 07:47,outbound,google,British Airways,LHR,VLC,2026-12-21,16:50,540.0
+2026-10-01 07:47,outbound,google,British Airways,LHR,VLC,2026-12-19,15:00,625.0
+2026-10-01 07:47,outbound,google,British Airways,LHR,VLC,2026-12-23,14:25,694.0
+2026-10-01 07:47,return,google,Wizz Air,VLC,LTN,2027-01-06,10:05,35.0
+2026-10-01 07:47,return,google,Wizz Air,VLC,LTN,2027-01-07,10:05,35.0
+2026-10-01 07:47,return,ryanair-api,Ryanair,VLC,STN,2027-01-05,13:10,49.99
+2026-10-01 07:47,return,ryanair-api,Ryanair,VLC,STN,2027-01-04,21:50,54.99
+2026-10-01 07:47,return,ryanair-api,Ryanair,VLC,STN,2027-01-07,17:10,57.99
+2026-10-01 07:47,return,google,Wizz Air,VLC,LGW,2027-01-06,10:10,79.0
+2026-10-01 07:47,return,ryanair-api,Ryanair,VLC,STN,2027-01-06,12:30,86.99
+2026-10-01 07:47,return,google,British Airways,VLC,LHR,2027-01-07,21:10,108.0
+2026-10-01 07:47,return,ryanair-api,Ryanair,VLC,STN,2027-01-02,11:15,132.99
+2026-10-01 07:47,return,ryanair-api,Ryanair,VLC,STN,2027-01-03,12:55,133.69
+2026-10-01 07:47,return,google,Ryanair,VLC,STN,2027-01-07,10:55,140.0
+2026-10-01 07:47,return,google,easyJet,VLC,LGW,2027-01-06,21:20,142.0
+2026-10-01 07:47,return,google,Wizz Air,VLC,LTN,2027-01-04,10:05,171.0
+2026-10-01 07:47,return,google,easyJet,VLC,LGW,2027-01-05,11:45,181.0
+2026-10-01 07:47,return,google,Ryanair,VLC,STN,2027-01-04,13:15,198.0
+2026-10-01 07:47,return,google,easyJet,VLC,LGW,2027-01-03,21:25,212.0
+2026-10-01 07:47,return,google,Ryanair,VLC,STN,2027-01-02,14:10,231.0
+2026-10-01 07:47,return,google,Ryanair,VLC,STN,2027-01-04,10:20,239.0
+2026-10-01 07:47,return,google,easyJet,VLC,LGW,2027-01-04,11:55,241.0
+2026-10-01 07:47,return,google,easyJet,VLC,LGW,2027-01-02,21:30,242.0
+2026-10-01 07:47,return,google,Wizz Air,VLC,LGW,2027-01-04,11:00,256.0
+2026-10-01 07:47,return,google,Ryanair,VLC,STN,2027-01-02,17:40,262.0
+2026-10-01 07:47,return,google,Ryanair,VLC,STN,2027-01-03,15:10,265.0
+2026-10-01 07:47,return,google,easyJet,VLC,LGW,2027-01-02,12:15,305.0
+2026-10-01 07:47,return,google,Wizz Air,VLC,LGW,2027-01-03,10:05,308.0
+2026-10-01 07:47,return,google,Wizz Air,VLC,LTN,2027-01-03,10:05,308.0
+2026-10-01 07:47,return,google,easyJet,VLC,LGW,2027-01-03,12:20,319.0
+2026-10-01 07:47,return,google,British Airways,VLC,LHR,2027-01-04,21:10,335.0
+2026-10-01 07:47,return,google,British Airways,VLC,LHR,2027-01-02,19:30,692.0
