@@ -47,7 +47,7 @@ RETURN_DATES = ["2027-01-02", "2027-01-03", "2027-01-04", "2027-01-05", "2027-01
 
 # Earliest acceptable departure time (local), per departure airport.
 # Default applies to anything not listed (incl. VLC on the way back).
-EARLIEST_DEP = {"STN": "08:30", "DEFAULT": "10:00"}
+EARLIEST_DEP = {"STN": "07:30", "DEFAULT": "9:00"}
 
 # London airports checked on Google Flights (LCY dropped: no cheap VLC service)
 GOOGLE_LONDON_AIRPORTS = ["LGW", "LTN", "LHR", "STN"]
