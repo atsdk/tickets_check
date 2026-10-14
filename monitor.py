@@ -42,7 +42,7 @@ except Exception as _e:  # noqa: N816
 PAX = 2
 
 # Outbound: London -> Valencia
-OUTBOUND_DATES = ["2026-12-19", "2026-12-20", "2026-12-21", "2026-12-22", "2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27", "2026-12-28"]
+OUTBOUND_DATES = ["2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27", "2026-12-28"]
 
 # Earliest acceptable departure time (local), per departure airport.
 # Default applies to anything not listed.
