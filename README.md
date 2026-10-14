@@ -1,9 +1,9 @@
 # London ↔ Valencia fare monitor
 
-Watches fares for 2 people, London → Valencia (23–26 Dec 2026) and back (4–7 Jan 2027),
-no departures before 10:00 (08:30 allowed from Stansted), under-seat bag only.
-Runs free in the cloud on GitHub Actions every ~30 min and pings you on Telegram
-when the best round-trip total for 2 drops below £150 or hits a new low.
+Watches one-way fares London → Valencia (19–28 Dec 2026), no departures before
+09:00 (07:30 allowed from Stansted), under-seat bag only. Runs free in the cloud
+on GitHub Actions every ~30 min and sends you on Telegram the cheapest fare for
+each date whenever any date's price drops by more than £5 per person.
 
 **Sources:** Ryanair's unofficial fare-finder JSON API (direct, reliable) +
 Google Flights via `fast-flights` (covers easyJet, Vueling, Wizz Air, BA from
@@ -38,9 +38,11 @@ Add secrets `SMTP_HOST` (e.g. `smtp.gmail.com`), `SMTP_PORT` (`465`),
 `EMAIL_TO`. Leave unset to skip email.
 
 ## When it alerts
-- Best qualifying round trip for 2 ≤ **£150** (edit `TOTAL_TARGET_GBP` in `monitor.py`)
-- Price drops ≥ £5 below the previous best
-- Once daily after 18:00 UTC (summary), and on the first run
+- Any date's cheapest per-person fare is more than **£5** below its price on the
+  previous run (edit `DROP_ALERT_GBP` in `monitor.py`)
+- Once daily, on the first run after 07:00 UTC (summary), and on the first run
+
+Every message lists the cheapest qualifying fare for each date, in date order.
 
 All checked fares append to `prices.csv` in the repo, so you also get a price
 history to see trends.

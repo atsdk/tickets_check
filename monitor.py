@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-London <-> Valencia fare monitor.
+London -> Valencia fare monitor (outbound only).
 
 Sources:
   1. Ryanair unofficial fare-finder API (services-api.ryanair.com) - STN route.
   2. Google Flights via `fast-flights` v3 - easyJet / Vueling / Wizz / BA
      from LGW, LTN, LHR, STN.
 
-Alerts via Telegram (and optionally email) when a qualifying round-trip combo
-for 2 people drops below TOTAL_TARGET_GBP, or when a new all-time low appears.
+Sends a Telegram (and optionally email) message with the cheapest qualifying
+fare for each outbound date whenever any date's price drops by more than
+DROP_ALERT_GBP per person since the previous run, plus a daily summary.
 
 State (state.json) and price history (prices.csv) are committed back to the
 repo by the GitHub Actions workflow.
@@ -42,21 +43,19 @@ PAX = 2
 
 # Outbound: London -> Valencia
 OUTBOUND_DATES = ["2026-12-19", "2026-12-20", "2026-12-21", "2026-12-22", "2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27", "2026-12-28"]
-# Return: Valencia -> London
-RETURN_DATES = ["2027-01-02", "2027-01-03", "2027-01-04", "2027-01-05", "2027-01-06", "2027-01-07"]
 
 # Earliest acceptable departure time (local), per departure airport.
-# Default applies to anything not listed (incl. VLC on the way back).
-EARLIEST_DEP = {"STN": "07:30", "DEFAULT": "9:00"}
+# Default applies to anything not listed.
+EARLIEST_DEP = {"STN": "07:30", "DEFAULT": "09:00"}
 
 # London airports checked on Google Flights (LCY dropped: no cheap VLC service)
 GOOGLE_LONDON_AIRPORTS = ["LGW", "LTN", "LHR", "STN"]
 
 DIRECT_ONLY = True
 
-# Alert thresholds
-TOTAL_TARGET_GBP = 150.0   # alert if best round-trip total for PAX people <= this
-DROP_ALERT_GBP = 5.0       # also alert if best total drops by at least this much
+# Alert when any date's cheapest per-person fare falls by MORE than this
+# compared with the previous run
+DROP_ALERT_GBP = 5.0
 # GitHub throttles cron heavily, so runs can be hours apart: send the daily
 # summary on the FIRST run after this UTC hour (if none sent yet today).
 DAILY_SUMMARY_AFTER_UTC = 7
@@ -76,7 +75,9 @@ def utcnow():
 
 
 def earliest_for(airport: str) -> str:
-    return EARLIEST_DEP.get(airport, EARLIEST_DEP["DEFAULT"])
+    # Zero-pad ("9:00" -> "09:00"): time_ok compares HH:MM strings
+    h, m = EARLIEST_DEP.get(airport, EARLIEST_DEP["DEFAULT"]).split(":")
+    return f"{int(h):02d}:{int(m):02d}"
 
 
 def time_ok(airport: str, hhmm: str) -> bool:
@@ -175,15 +176,12 @@ def google_fares(origin, dest, day):
 # ----------------------------------------------------------------------------
 
 def collect():
-    outbound, inbound = [], []
+    outbound = []
 
     # Ryanair: the endpoint returns only the single cheapest fare in a range,
     # so query per day to see every date's price
     for day in OUTBOUND_DATES:
         outbound += ryanair_fares("STN", "VLC", day, day, earliest_for("STN"))
-        time.sleep(0.5)
-    for day in RETURN_DATES:
-        inbound += ryanair_fares("VLC", "STN", day, day, earliest_for("VLC"))
         time.sleep(0.5)
 
     # Google Flights: per airport x date
@@ -191,21 +189,23 @@ def collect():
         for ap in GOOGLE_LONDON_AIRPORTS:
             outbound += google_fares(ap, "VLC", day)
             time.sleep(1.5)
-    for day in RETURN_DATES:
-        for ap in GOOGLE_LONDON_AIRPORTS:
-            inbound += google_fares("VLC", ap, day)
-            time.sleep(1.5)
 
     # Dedupe: keep cheapest per (airline, from, to, date, dep_time)
-    def dedupe(fares):
-        best = {}
-        for f in fares:
-            k = (f["airline"], f["from"], f["to"], f["date"], f["dep_time"])
-            if k not in best or f["price_pp_gbp"] < best[k]["price_pp_gbp"]:
-                best[k] = f
-        return sorted(best.values(), key=lambda x: x["price_pp_gbp"])
+    best = {}
+    for f in outbound:
+        k = (f["airline"], f["from"], f["to"], f["date"], f["dep_time"])
+        if k not in best or f["price_pp_gbp"] < best[k]["price_pp_gbp"]:
+            best[k] = f
+    return sorted(best.values(), key=lambda x: x["price_pp_gbp"])
 
-    return dedupe(outbound), dedupe(inbound)
+
+def cheapest_per_day(fares):
+    """{date: cheapest fare that date} for dates with at least one fare."""
+    best = {}
+    for f in fares:
+        if f["date"] not in best or f["price_pp_gbp"] < best[f["date"]]["price_pp_gbp"]:
+            best[f["date"]] = f
+    return best
 
 
 # ----------------------------------------------------------------------------
@@ -216,7 +216,7 @@ def load_state():
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as fh:
             return json.load(fh)
-    return {"best_total": None, "last_summary": ""}
+    return {"last_prices": None, "last_summary": ""}
 
 
 def save_state(state):
@@ -241,14 +241,15 @@ def fmt(f):
             f"{f['airline']}: £{f['price_pp_gbp']:.2f}pp ({f['source']})")
 
 
-def build_message(outbound, inbound, total, reason):
-    lines = [f"✈️ LON↔VLC monitor — {reason}"]
-    if total is not None:
-        lines.append(f"Best qualifying round trip for {PAX}: £{total:.2f}")
-    lines.append(f"\nBest outbound ({OUTBOUND_DATES[0]} … {OUTBOUND_DATES[-1]}):")
-    lines += ["  " + fmt(f) for f in outbound[:5]] or ["  none found within time limits"]
-    lines.append(f"\nBest return ({RETURN_DATES[0]} … {RETURN_DATES[-1]}):")
-    lines += ["  " + fmt(f) for f in inbound[:5]] or ["  none found within time limits"]
+def build_message(per_day, drops, reason):
+    lines = [f"✈️ LON→VLC monitor — {reason}",
+             f"\nCheapest per day ({OUTBOUND_DATES[0]} … {OUTBOUND_DATES[-1]}):"]
+    for day in OUTBOUND_DATES:
+        f = per_day.get(day)
+        line = "  " + (fmt(f) if f else f"{day} none found within time limits")
+        if day in drops:
+            line += f" ⬇️ was £{drops[day]:.2f}"
+        lines.append(line)
     lines.append("\nPrices are per-person 'from' fares, under-seat bag only — "
                  "verify at checkout.")
     return "\n".join(lines)
@@ -287,42 +288,46 @@ def send_email(subject, text):
 
 def main():
     ts = utcnow().strftime("%Y-%m-%d %H:%M")
-    outbound, inbound = collect()
+    outbound = collect()
     log_csv(ts, outbound, "outbound")
-    log_csv(ts, inbound, "return")
-
-    total = None
-    if outbound and inbound:
-        total = (outbound[0]["price_pp_gbp"] + inbound[0]["price_pp_gbp"]) * PAX
+    per_day = cheapest_per_day(outbound)
 
     state = load_state()
-    prev = state.get("best_total")
+    prev = state.get("last_prices")  # {date: price_pp_gbp} from previous run
     today = utcnow().date().isoformat()
     hour = utcnow().hour
 
+    # Dates whose cheapest fare fell by more than DROP_ALERT_GBP: {date: old price}
+    drops = {}
+    for day, f in per_day.items():
+        old = (prev or {}).get(day)
+        if old is not None and old - f["price_pp_gbp"] > DROP_ALERT_GBP:
+            drops[day] = old
+
     reason = None
-    if total is not None and total <= TOTAL_TARGET_GBP:
-        reason = f"🎯 under target £{TOTAL_TARGET_GBP:.0f}!"
-    elif total is not None and prev is not None and total <= prev - DROP_ALERT_GBP:
-        reason = f"⬇️ price drop (was £{prev:.2f})"
+    if drops:
+        reason = f"⬇️ price drop on {len(drops)} day(s)"
     elif prev is None:
-        reason = "first run — monitoring is live"
+        reason = "monitoring is live — cheapest fare per day"
     elif state.get("last_summary") != today and hour >= DAILY_SUMMARY_AFTER_UTC:
         reason = "daily summary"
 
-    print(build_message(outbound, inbound, total, reason or "no alert"))
+    print(build_message(per_day, drops, reason or "no alert"))
 
     if reason:
-        msg = build_message(outbound, inbound, total, reason)
+        msg = build_message(per_day, drops, reason)
         send_telegram(msg)
         send_email("LON-VLC fare monitor", msg)
         state["last_summary"] = today
 
-    if total is not None and (prev is None or total < prev):
-        state["best_total"] = total
+    # Keep the old price for dates with no fare this run, so a source outage
+    # followed by recovery does not look like a drop
+    state["last_prices"] = {**(prev or {}),
+                            **{d: f["price_pp_gbp"] for d, f in per_day.items()}}
+    state.pop("best_total", None)  # round-trip total no longer tracked
     save_state(state)
 
-    if not outbound and not inbound:
+    if not outbound:
         print("[error] all sources returned nothing")
         sys.exit(1)
 
