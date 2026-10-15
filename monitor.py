@@ -41,7 +41,9 @@ except Exception as _e:  # noqa: N816
 
 PAX = 2
 
-# Outbound: London -> Valencia
+# Outbound: London -> each destination, one table per destination.
+# MAD and CDT (Castellón) are fallbacks: train on to Valencia is sometimes cheap.
+DESTINATIONS = ["VLC", "MAD", "CDT"]
 OUTBOUND_DATES = ["2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27", "2026-12-28"]
 
 # Earliest acceptable departure time (local), per departure airport.
@@ -175,19 +177,19 @@ def google_fares(origin, dest, day):
 # Collection
 # ----------------------------------------------------------------------------
 
-def collect():
+def collect(dest):
     outbound = []
 
     # Ryanair: the endpoint returns only the single cheapest fare in a range,
     # so query per day to see every date's price
     for day in OUTBOUND_DATES:
-        outbound += ryanair_fares("STN", "VLC", day, day, earliest_for("STN"))
+        outbound += ryanair_fares("STN", dest, day, day, earliest_for("STN"))
         time.sleep(0.5)
 
     # Google Flights: per airport x date
     for day in OUTBOUND_DATES:
         for ap in GOOGLE_LONDON_AIRPORTS:
-            outbound += google_fares(ap, "VLC", day)
+            outbound += google_fares(ap, dest, day)
             time.sleep(1.5)
 
     # Dedupe: keep cheapest per (airline, from, to, date, dep_time)
@@ -216,7 +218,7 @@ def load_state():
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as fh:
             return json.load(fh)
-    return {"last_prices": None, "last_summary": ""}
+    return {"last_prices_by_dest": None, "last_summary": ""}
 
 
 def save_state(state):
@@ -242,14 +244,17 @@ def fmt(f):
 
 
 def build_message(per_day, drops, reason):
-    lines = [f"✈️ LON→VLC monitor — {reason}",
-             f"\nCheapest per day ({OUTBOUND_DATES[0]} … {OUTBOUND_DATES[-1]}):"]
-    for day in OUTBOUND_DATES:
-        f = per_day.get(day)
-        line = "  " + (fmt(f) if f else f"{day} none found within time limits")
-        if day in drops:
-            line += f" ⬇️ was £{drops[day]:.2f}"
-        lines.append(line)
+    """per_day and drops are keyed by destination, then by date."""
+    lines = [f"✈️ LON→{'/'.join(DESTINATIONS)} monitor — {reason}"]
+    for dest in DESTINATIONS:
+        lines.append(f"\nLondon → {dest}, cheapest per day "
+                     f"({OUTBOUND_DATES[0]} … {OUTBOUND_DATES[-1]}):")
+        for day in OUTBOUND_DATES:
+            f = per_day[dest].get(day)
+            line = "  " + (fmt(f) if f else f"{day} none found within time limits")
+            if day in drops[dest]:
+                line += f" ⬇️ was £{drops[dest][day]:.2f}"
+            lines.append(line)
     lines.append("\nPrices are per-person 'from' fares, under-seat bag only — "
                  "verify at checkout.")
     return "\n".join(lines)
@@ -288,25 +293,30 @@ def send_email(subject, text):
 
 def main():
     ts = utcnow().strftime("%Y-%m-%d %H:%M")
-    outbound = collect()
-    log_csv(ts, outbound, "outbound")
-    per_day = cheapest_per_day(outbound)
-
     state = load_state()
-    prev = state.get("last_prices")  # {date: price_pp_gbp} from previous run
+    # {dest: {date: price_pp_gbp}} from previous run
+    prev = state.get("last_prices_by_dest")
     today = utcnow().date().isoformat()
     hour = utcnow().hour
 
-    # Dates whose cheapest fare fell by more than DROP_ALERT_GBP: {date: old price}
-    drops = {}
-    for day, f in per_day.items():
-        old = (prev or {}).get(day)
-        if old is not None and old - f["price_pp_gbp"] > DROP_ALERT_GBP:
-            drops[day] = old
+    outbound, per_day, drops = [], {}, {}
+    for dest in DESTINATIONS:
+        fares = collect(dest)
+        outbound += fares
+        per_day[dest] = cheapest_per_day(fares)
+        # Dates whose cheapest fare fell by more than DROP_ALERT_GBP: {date: old price}
+        old_prices = (prev or {}).get(dest, {})
+        drops[dest] = {}
+        for day, f in per_day[dest].items():
+            old = old_prices.get(day)
+            if old is not None and old - f["price_pp_gbp"] > DROP_ALERT_GBP:
+                drops[dest][day] = old
+    log_csv(ts, outbound, "outbound")
 
+    n_drops = sum(len(d) for d in drops.values())
     reason = None
-    if drops:
-        reason = f"⬇️ price drop on {len(drops)} day(s)"
+    if n_drops:
+        reason = f"⬇️ price drop on {n_drops} day(s)"
     elif prev is None:
         reason = "monitoring is live — cheapest fare per day"
     elif state.get("last_summary") != today and hour >= DAILY_SUMMARY_AFTER_UTC:
@@ -317,14 +327,17 @@ def main():
     if reason:
         msg = build_message(per_day, drops, reason)
         send_telegram(msg)
-        send_email("LON-VLC fare monitor", msg)
+        send_email("LON fare monitor", msg)
         state["last_summary"] = today
 
     # Keep the old price for dates with no fare this run, so a source outage
     # followed by recovery does not look like a drop
-    state["last_prices"] = {**(prev or {}),
-                            **{d: f["price_pp_gbp"] for d, f in per_day.items()}}
-    state.pop("best_total", None)  # round-trip total no longer tracked
+    state["last_prices_by_dest"] = {
+        dest: {**(prev or {}).get(dest, {}),
+               **{d: f["price_pp_gbp"] for d, f in per_day[dest].items()}}
+        for dest in DESTINATIONS
+    }
+    state.pop("last_prices", None)  # old VLC-only format
     save_state(state)
 
     if not outbound:

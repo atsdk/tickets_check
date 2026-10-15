@@ -1,9 +1,11 @@
 # London ↔ Valencia fare monitor
 
-Watches one-way fares London → Valencia (19–28 Dec 2026), no departures before
-09:00 (07:30 allowed from Stansted), under-seat bag only. Runs free in the cloud
-on GitHub Actions every ~30 min and sends you on Telegram the cheapest fare for
-each date whenever any date's price drops by more than £5 per person.
+Watches one-way fares London → Valencia (VLC), plus Madrid (MAD) and Castellón
+(CDT) as train-onward fallbacks, for the dates in `OUTBOUND_DATES`. No departures
+before 09:00 (earlier allowed from Stansted, see `EARLIEST_DEP`), under-seat bag
+only. Runs free in the cloud on GitHub Actions every ~30 min and sends you on
+Telegram one table per destination with the cheapest fare for each date,
+whenever any date's price drops by more than £5 per person.
 
 **Sources:** Ryanair's unofficial fare-finder JSON API (direct, reliable) +
 Google Flights via `fast-flights` (covers easyJet, Vueling, Wizz Air, BA from
