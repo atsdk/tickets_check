@@ -3,7 +3,7 @@
 Watches one-way fares London → Valencia (VLC), plus Madrid (MAD) and Castellón
 (CDT) as train-onward fallbacks, for the dates in `OUTBOUND_DATES`. No departures
 before 09:00 (earlier allowed from Stansted, see `EARLIEST_DEP`), under-seat bag
-only. Runs free in the cloud on GitHub Actions every ~30 min and sends you on
+only. Runs free in the cloud on GitHub Actions every ~2 hours and sends you on
 Telegram one table per destination with the cheapest fare for each date,
 whenever any date's price drops by more than £5 per person.
 
@@ -31,7 +31,7 @@ LGW/LTN/LHR/STN). No Selenium, no paid APIs.
    to test. Within a couple of minutes you should get a "first run — monitoring
    is live" Telegram message with the current best fares.
 
-That's it. It now runs every ~30 min with your laptop off, until you delete the
+That's it. It now runs every ~2 hours with your laptop off, until you delete the
 repo or disable the workflow.
 
 ### Optional: email alerts

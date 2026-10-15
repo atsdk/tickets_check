@@ -2,7 +2,7 @@ name: fare-monitor
 
 on:
   schedule:
-    - cron: "13,43 * * * *"  # off-peak minutes — top-of-hour crons get throttled hardest
+    - cron: "13 */2 * * *"  # every 2 h, off-peak minute — top-of-hour crons get throttled hardest
   workflow_dispatch:          # manual "Run workflow" button for testing
 
 permissions:
