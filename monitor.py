@@ -48,7 +48,7 @@ OUTBOUND_DATES = ["2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-
 
 # Earliest acceptable departure time (local), per departure airport.
 # Default applies to anything not listed.
-EARLIEST_DEP = {"STN": "07:00", "DEFAULT": "09:00"}
+EARLIEST_DEP = {"STN": "06:50", "DEFAULT": "09:00"}
 
 # London airports checked on Google Flights (LCY dropped: no cheap VLC service)
 GOOGLE_LONDON_AIRPORTS = ["LGW", "LTN", "LHR", "STN"]
