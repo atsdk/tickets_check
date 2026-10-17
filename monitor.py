@@ -7,8 +7,10 @@ Sources:
   2. Google Flights via `fast-flights` v3 - easyJet / Vueling / Wizz / BA
      from LGW, LTN, LHR, STN.
 
-Sends a Telegram (and optionally email) message with the cheapest qualifying
-fare for each outbound date whenever any date's price drops by more than
+Sends a Telegram (and optionally email) message with one list: the TOP_N
+cheapest fares at or under MAX_PRICE_GBP across all destinations, ranked with
+TRANSFER_COST_GBP added for Madrid/Castellón (shown prices are actual fares).
+Sent whenever a listed fare is a date's price that dropped by more than
 DROP_ALERT_GBP per person since the previous run, plus a daily summary.
 
 State (state.json) and price history (prices.csv) are committed back to the
@@ -41,10 +43,17 @@ except Exception as _e:  # noqa: N816
 
 PAX = 2
 
-# Outbound: London -> each destination, one table per destination.
+# Outbound: London -> each destination, merged into one ranked list.
 # MAD and CDT (Castellón) are fallbacks: train on to Valencia is sometimes cheap.
 DESTINATIONS = ["VLC", "MAD", "CDT"]
 OUTBOUND_DATES = ["2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27", "2026-12-28"]
+
+# Hide fares whose actual per-person price is above this
+MAX_PRICE_GBP = 80.0
+# Train cost to Valencia, added for ranking only (shown prices stay actual)
+TRANSFER_COST_GBP = {"MAD": 20.0, "CDT": 20.0}
+# How many fares the message lists
+TOP_N = 7
 
 # Earliest acceptable departure time (local), per departure airport.
 # Default applies to anything not listed.
@@ -238,23 +247,36 @@ def log_csv(ts, fares, leg):
                         f["date"], f["dep_time"], f["price_pp_gbp"]])
 
 
+def rank_price(f):
+    """Price used for ranking: actual fare plus train transfer to Valencia."""
+    return f["price_pp_gbp"] + TRANSFER_COST_GBP.get(f["to"], 0.0)
+
+
+def top_fares(fares):
+    """TOP_N fares at or under MAX_PRICE_GBP, cheapest rank_price first."""
+    ok = [f for f in fares if f["price_pp_gbp"] <= MAX_PRICE_GBP]
+    return sorted(ok, key=lambda f: (rank_price(f), f["date"]))[:TOP_N]
+
+
 def fmt(f):
-    return (f"{f['date']} {f['dep_time']} {f['from']}->{f['to']} "
+    return (f"{f['date']} {f['dep_time']} {f['from']}-{f['to']} "
             f"{f['airline']}: £{f['price_pp_gbp']:.2f}pp ({f['source']})")
 
 
-def build_message(per_day, drops, reason):
-    """per_day and drops are keyed by destination, then by date."""
-    lines = [f"✈️ LON→{'/'.join(DESTINATIONS)} monitor — {reason}"]
-    for dest in DESTINATIONS:
-        lines.append(f"\nLondon → {dest}, cheapest per day "
-                     f"({OUTBOUND_DATES[0]} … {OUTBOUND_DATES[-1]}):")
-        for day in OUTBOUND_DATES:
-            f = per_day[dest].get(day)
-            line = "  " + (fmt(f) if f else f"{day} none found within time limits")
-            if day in drops[dest]:
-                line += f" ⬇️ was £{drops[dest][day]:.2f}"
-            lines.append(line)
+def build_message(rows, reason):
+    """rows: [(fare, previous price if that date's price dropped, else None)]."""
+    extra = ", ".join(f"{d} +£{c:.0f}" for d, c in TRANSFER_COST_GBP.items())
+    lines = [f"✈️ LON→{'/'.join(DESTINATIONS)} monitor — {reason}",
+             f"\nTop {TOP_N}, {OUTBOUND_DATES[0]} … {OUTBOUND_DATES[-1]}, "
+             f"fares ≤ £{MAX_PRICE_GBP:.0f} (ranked with {extra} for the train; "
+             "prices shown are actual):"]
+    for i, (f, old) in enumerate(rows, 1):
+        line = f"  {i}. {fmt(f)}"
+        if old is not None:
+            line += f" ⬇️ was £{old:.2f}"
+        lines.append(line)
+    if not rows:
+        lines.append(f"  none ≤ £{MAX_PRICE_GBP:.0f} within time limits")
     lines.append("\nPrices are per-person 'from' fares, under-seat bag only — "
                  "verify at checkout.")
     return "\n".join(lines)
@@ -313,19 +335,27 @@ def main():
                 drops[dest][day] = old
     log_csv(ts, outbound, "outbound")
 
-    n_drops = sum(len(d) for d in drops.values())
+    # Mark a listed fare as dropped only if it is that date's cheapest fare
+    # for its destination, so the "was" price refers to the same thing
+    rows = []
+    for f in top_fares(outbound):
+        old = drops[f["to"]].get(f["date"])
+        rows.append((f, old if per_day[f["to"]].get(f["date"]) is f else None))
+
+    # Alert only on drops visible in the list
+    n_drops = sum(old is not None for _, old in rows)
     reason = None
     if n_drops:
-        reason = f"⬇️ price drop on {n_drops} day(s)"
+        reason = f"⬇️ price drop on {n_drops} listed fare(s)"
     elif prev is None:
-        reason = "monitoring is live — cheapest fare per day"
+        reason = "monitoring is live"
     elif state.get("last_summary") != today and hour >= DAILY_SUMMARY_AFTER_UTC:
         reason = "daily summary"
 
-    print(build_message(per_day, drops, reason or "no alert"))
+    print(build_message(rows, reason or "no alert"))
 
     if reason:
-        msg = build_message(per_day, drops, reason)
+        msg = build_message(rows, reason)
         send_telegram(msg)
         send_email("LON fare monitor", msg)
         state["last_summary"] = today

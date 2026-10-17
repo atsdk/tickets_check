@@ -4,8 +4,8 @@ Watches one-way fares London → Valencia (VLC), plus Madrid (MAD) and Castelló
 (CDT) as train-onward fallbacks, for the dates in `OUTBOUND_DATES`. No departures
 before 09:00 (earlier allowed from Stansted, see `EARLIEST_DEP`), under-seat bag
 only. Runs free in the cloud on GitHub Actions every ~2 hours and sends you on
-Telegram one table per destination with the cheapest fare for each date,
-whenever any date's price drops by more than £5 per person.
+Telegram one ranked list of the cheapest fares (see below) whenever a listed
+fare's price drops by more than £5 per person.
 
 **Sources:** Ryanair's unofficial fare-finder JSON API (direct, reliable) +
 Google Flights via `fast-flights` (covers easyJet, Vueling, Wizz Air, BA from
@@ -40,11 +40,15 @@ Add secrets `SMTP_HOST` (e.g. `smtp.gmail.com`), `SMTP_PORT` (`465`),
 `EMAIL_TO`. Leave unset to skip email.
 
 ## When it alerts
-- Any date's cheapest per-person fare is more than **£5** below its price on the
-  previous run (edit `DROP_ALERT_GBP` in `monitor.py`)
+- A listed fare is its date's cheapest for that destination and is more than
+  **£5** below that date's price on the previous run (edit `DROP_ALERT_GBP`)
 - Once daily, on the first run after 07:00 UTC (summary), and on the first run
 
-Every message lists the cheapest qualifying fare for each date, in date order.
+Every message is one list of the `TOP_N` (7) best fares across all destinations,
+each shown as `<departure airport>-<destination airport>`. Fares above
+`MAX_PRICE_GBP` (£80, actual price) are hidden. Madrid and Castellón are ranked
+as if £20 dearer (`TRANSFER_COST_GBP`, the train to Valencia), but the price
+shown is the actual fare.
 
 All checked fares append to `prices.csv` in the repo, so you also get a price
 history to see trends.
