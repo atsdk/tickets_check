@@ -48,7 +48,10 @@ Every message is one list of the `TOP_N` (7) best fares across all destinations,
 each shown as `<departure airport>-<destination airport>`. Fares above
 `MAX_PRICE_GBP` (£80, actual price) are hidden. Madrid and Castellón are ranked
 as if £20 dearer (`TRANSFER_COST_GBP`, the train to Valencia), but the price
-shown is the actual fare.
+shown is the actual fare. Madrid and Castellón flights must land at least
+`MIN_CONNECTION_MIN` (2 h) before the last onward connection to Valencia
+(`LAST_ONWARD_DEP`: 21:00 train from Madrid, 21:15 coach from Castellón), so
+the latest landing is 19:00 in Madrid and 19:15 in Castellón.
 
 All checked fares append to `prices.csv` in the repo, so you also get a price
 history to see trends.

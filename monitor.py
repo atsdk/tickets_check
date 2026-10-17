@@ -59,6 +59,15 @@ TOP_N = 7
 # Default applies to anything not listed.
 EARLIEST_DEP = {"STN": "06:50", "DEFAULT": "09:00"}
 
+# Last onward connection to Valencia (local time) per fallback destination.
+# Flights landing later than this minus MIN_CONNECTION_MIN, or after midnight,
+# are dropped.
+#   MAD: last Madrid Chamartín -> Valencia high-speed train ~21:00 (Renfe
+#        AVE/Avlo; OUIGO 21:15 may not run on holidays).
+#   CDT: airport bus waits for the flight; last Castellón -> Valencia coach 21:15.
+LAST_ONWARD_DEP = {"MAD": "21:00", "CDT": "21:15"}
+MIN_CONNECTION_MIN = 120
+
 # London airports checked on Google Flights (LCY dropped: no cheap VLC service)
 GOOGLE_LONDON_AIRPORTS = ["LGW", "LTN", "LHR", "STN"]
 
@@ -95,6 +104,22 @@ def time_ok(airport: str, hhmm: str) -> bool:
     return hhmm >= earliest_for(airport)
 
 
+def latest_arrival(dest):
+    """Latest acceptable landing time (HH:MM) at dest, or None if unconstrained."""
+    last = LAST_ONWARD_DEP.get(dest)
+    if last is None:
+        return None
+    h, m = map(int, last.split(":"))
+    t = h * 60 + m - MIN_CONNECTION_MIN
+    return f"{t // 60:02d}:{t % 60:02d}"
+
+
+def arrival_ok(dest, dep_date, arr_date, arr_hhmm):
+    """True if a flight landing at arr_date arr_hhmm still makes the connection."""
+    latest = latest_arrival(dest)
+    return latest is None or (arr_date == dep_date and arr_hhmm <= latest)
+
+
 def to_gbp(amount: float, currency: str) -> float:
     return round(amount * FX_TO_GBP.get(currency, 1.0), 2)
 
@@ -103,41 +128,61 @@ def to_gbp(amount: float, currency: str) -> float:
 # Source 1: Ryanair fare finder (unofficial, no key)
 # ----------------------------------------------------------------------------
 
-def ryanair_fares(origin, dest, date_from, date_to, earliest):
+def ryanair_fares(origin, dest, day, earliest):
+    """Cheapest Ryanair fare on `day` departing at/after `earliest` and landing
+    in time for the onward connection (see LAST_ONWARD_DEP)."""
     url = "https://services-api.ryanair.com/farfnd/v4/oneWayFares"
-    params = {
-        "departureAirportIataCode": origin,
-        "arrivalAirportIataCode": dest,
-        "outboundDepartureDateFrom": date_from,
-        "outboundDepartureDateTo": date_to,
-        "outboundDepartureTimeFrom": earliest,
-        "outboundDepartureTimeTo": "23:59",
-        "currency": "GBP",
-        "market": "en-gb",
-    }
-    out = []
+    latest_dep = "23:59"
     try:
-        r = requests.get(url, params=params, timeout=30,
-                         headers={"User-Agent": "Mozilla/5.0"})
-        r.raise_for_status()
-        for fare in r.json().get("fares", []):
-            ob = fare.get("outbound", {})
-            price = (ob.get("price") or {})
-            value, cur = price.get("value"), price.get("currencyCode", "GBP")
-            dep = ob.get("departureDate", "")  # e.g. 2026-12-23T08:30:00
-            if value is None or "T" not in dep:
-                continue
-            d, hhmm = dep.split("T")[0], dep.split("T")[1][:5]
-            if not time_ok(origin, hhmm):
-                continue
-            out.append({
-                "source": "ryanair-api", "airline": "Ryanair",
-                "from": origin, "to": dest, "date": d, "dep_time": hhmm,
-                "price_pp_gbp": to_gbp(value, cur),
-            })
+        # The endpoint returns only the cheapest fare and cannot filter by
+        # arrival time: if that fare lands too late, ask again for flights
+        # departing before it
+        for _ in range(10):
+            params = {
+                "departureAirportIataCode": origin,
+                "arrivalAirportIataCode": dest,
+                "outboundDepartureDateFrom": day,
+                "outboundDepartureDateTo": day,
+                "outboundDepartureTimeFrom": earliest,
+                "outboundDepartureTimeTo": latest_dep,
+                "currency": "GBP",
+                "market": "en-gb",
+            }
+            r = requests.get(url, params=params, timeout=30,
+                             headers={"User-Agent": "Mozilla/5.0"})
+            r.raise_for_status()
+            out, too_late = [], []
+            for fare in r.json().get("fares", []):
+                ob = fare.get("outbound", {})
+                price = (ob.get("price") or {})
+                value, cur = price.get("value"), price.get("currencyCode", "GBP")
+                dep = ob.get("departureDate", "")  # e.g. 2026-12-23T08:30:00
+                arr = ob.get("arrivalDate", "")
+                if value is None or "T" not in dep or "T" not in arr:
+                    continue
+                d, hhmm = dep[:10], dep[11:16]
+                if not time_ok(origin, hhmm):
+                    continue
+                if not arrival_ok(dest, d, arr[:10], arr[11:16]):
+                    too_late.append(hhmm)
+                    continue
+                out.append({
+                    "source": "ryanair-api", "airline": "Ryanair",
+                    "from": origin, "to": dest, "date": d, "dep_time": hhmm,
+                    "price_pp_gbp": to_gbp(value, cur),
+                })
+            if out or not too_late:
+                return out
+            # Retry with departures up to one minute before the late flight
+            h, m = map(int, min(too_late).split(":"))
+            t = h * 60 + m - 1
+            if t < 0:
+                return []
+            latest_dep = f"{t // 60:02d}:{t % 60:02d}"
+            time.sleep(0.5)
     except Exception as e:
-        print(f"[warn] Ryanair {origin}->{dest} failed: {e}")
-    return out
+        print(f"[warn] Ryanair {origin}->{dest} {day} failed: {e}")
+    return []
 
 
 # ----------------------------------------------------------------------------
@@ -166,6 +211,13 @@ def google_fares(origin, dest, day):
                 hhmm = f"{h:02d}:{m:02d}"
                 if not time_ok(origin, hhmm):
                     continue
+                if latest_arrival(dest) is not None:
+                    arr = fl.flights[-1].arrival
+                    y, mo, d = arr.date
+                    ah, am = arr.time
+                    if not arrival_ok(dest, day, f"{y:04d}-{mo:02d}-{d:02d}",
+                                      f"{ah:02d}:{am:02d}"):
+                        continue
                 price = float(fl.price)  # int, in GBP (currency=GBP)
                 if price <= 0:
                     continue
@@ -192,7 +244,7 @@ def collect(dest):
     # Ryanair: the endpoint returns only the single cheapest fare in a range,
     # so query per day to see every date's price
     for day in OUTBOUND_DATES:
-        outbound += ryanair_fares("STN", dest, day, day, earliest_for("STN"))
+        outbound += ryanair_fares("STN", dest, day, earliest_for("STN"))
         time.sleep(0.5)
 
     # Google Flights: per airport x date
