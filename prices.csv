@@ -17348,3 +17348,66 @@ ts,leg,source,airline,from,to,date,dep_time,price_pp_gbp
 2026-10-18 11:03,outbound,google,British Airways,LHR,MAD,2026-12-23,14:55,579.0
 2026-10-18 11:03,outbound,google,British Airways,LHR,MAD,2026-12-23,13:35,613.0
 2026-10-18 11:03,outbound,ryanair-api,Ryanair,STN,CDT,2026-12-27,06:50,34.65
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-26,19:35,50.09
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-27,08:10,67.43
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-24,13:15,85.99
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-28,17:45,93.93
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,VLC,2026-12-23,14:25,115.67
+2026-10-18 15:52,outbound,google,easyJet,LGW,VLC,2026-12-24,17:20,143.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,VLC,2026-12-26,16:05,148.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,VLC,2026-12-26,13:10,155.0
+2026-10-18 15:52,outbound,google,easyJet,LGW,VLC,2026-12-26,17:30,168.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,VLC,2026-12-24,07:00,182.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,VLC,2026-12-27,14:50,182.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,VLC,2026-12-28,15:10,198.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,VLC,2026-12-27,17:05,199.0
+2026-10-18 15:52,outbound,google,easyJet,LGW,VLC,2026-12-28,17:20,234.0
+2026-10-18 15:52,outbound,google,easyJet,LGW,VLC,2026-12-23,17:20,247.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,VLC,2026-12-23,11:25,250.0
+2026-10-18 15:52,outbound,google,easyJet,LGW,VLC,2026-12-27,17:30,285.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,VLC,2026-12-24,16:50,394.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,VLC,2026-12-26,15:00,404.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,VLC,2026-12-28,16:50,516.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,VLC,2026-12-23,14:25,694.0
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,MAD,2026-12-26,15:15,55.99
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,MAD,2026-12-28,12:15,60.59
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,MAD,2026-12-27,09:45,63.99
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,MAD,2026-12-24,13:05,95.99
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,MAD,2026-12-23,08:30,107.99
+2026-10-18 15:52,outbound,google,Ryanair,STN,MAD,2026-12-26,08:50,110.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,MAD,2026-12-27,07:45,134.0
+2026-10-18 15:52,outbound,google,Iberia,LGW,MAD,2026-12-25,11:35,143.0
+2026-10-18 15:52,outbound,google,easyJet,LGW,MAD,2026-12-26,15:30,162.0
+2026-10-18 15:52,outbound,google,Air Europa,LGW,MAD,2026-12-25,10:00,181.0
+2026-10-18 15:52,outbound,google,Air Europa,LGW,MAD,2026-12-26,10:00,215.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,MAD,2026-12-23,10:00,228.0
+2026-10-18 15:52,outbound,google,Iberia,LGW,MAD,2026-12-24,11:35,229.0
+2026-10-18 15:52,outbound,google,Ryanair,STN,MAD,2026-12-23,12:30,231.0
+2026-10-18 15:52,outbound,google,Iberia,LGW,MAD,2026-12-26,11:35,243.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-25,09:15,271.0
+2026-10-18 15:52,outbound,google,Air Europa,LGW,MAD,2026-12-27,10:00,281.0
+2026-10-18 15:52,outbound,google,Air Europa,LGW,MAD,2026-12-23,10:00,319.0
+2026-10-18 15:52,outbound,google,Air Europa,LGW,MAD,2026-12-24,10:00,319.0
+2026-10-18 15:52,outbound,google,Iberia,LGW,MAD,2026-12-27,11:35,331.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-24,09:15,341.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-24,11:25,341.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-25,10:10,343.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-25,13:25,359.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-24,10:45,369.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-25,11:25,369.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-24,13:35,387.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-24,10:10,413.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-24,15:00,413.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-26,13:35,413.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-26,11:25,425.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-27,09:15,425.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-28,10:45,425.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-28,11:25,425.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-27,13:20,467.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-27,10:10,471.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-23,14:55,579.0
+2026-10-18 15:52,outbound,google,British Airways,LHR,MAD,2026-12-23,13:35,613.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-27,11:25,685.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-23,10:45,855.0
+2026-10-18 15:52,outbound,google,Iberia,LHR,MAD,2026-12-23,11:25,855.0
+2026-10-18 15:52,outbound,ryanair-api,Ryanair,STN,CDT,2026-12-27,06:50,34.65
